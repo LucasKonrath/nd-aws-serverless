@@ -4,7 +4,25 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation  
 
+
+
+custom:
+  documentation:
+    api:
+      info:
+        version: v0.0.0
+        title: Some API title
+        description: Some API description
+    models:
+      - name: CreateTodoModel
+        contentType: application/json
+        schema: ${file(models/create-todo-model.json)} # reference to your model's json schema file. You can also declare the model inline.
+      - name: UpdateTodoModel
+        contentType: application/json
+        schema: ${file(models/update-todo-model.json)}
 provider:
   name: aws
   runtime: nodejs12.x  
@@ -78,9 +96,10 @@ functions:
           path: todos
           cors: true
           auth: Auth
-          request:
-            schemas:
-              application/json: ${file(models/create-todo-model.json)}
+          documentation:
+            requestModels:
+              application/json: CreateTodoModel
+          reqValidatorName: onlyBody               
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -111,6 +130,10 @@ functions:
           path: todos/{todoId}
           cors: true
           auth: Auth
+          documentation:
+            requestModels:
+              application/json: UpdateTodoModel       
+          reqValidatorName: onlyBody              
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -213,6 +236,15 @@ resources:
         ResponseType: DEFAULT_4XX
         RestApiId:
           Ref: ApiGatewayRestApi
+
+    onlyBody:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'only-body'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true # true or false
+        ValidateRequestParameters: false # true or false
 
     # DynamoDB
     TodosTable:
